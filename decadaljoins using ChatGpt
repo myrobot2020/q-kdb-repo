@@ -1,0 +1,20 @@
+\l dplyr,readxl
+f:("1951.xlsx","1961.xlsx","1971.xlsx","1981.xlsx","1991.xlsx","2001.xlsx")
+y:substr[f;1;4]
+d:`f!read0[`;f]
+v:read0[`;`varnames.xlsx]
+d:`d!(flip . setColNames;v;`varnames)
+v:("male_population","female_population","male_0_6_years",
+     "female_0_6_years","male_literate_population","female_literate_population",
+     "male_sc_population","female_sc_population","male_st_population","female_st_population")
+l:("district_mdds_name","sub_district_mdds_name","name_of_mdds_village_town",
+     "village_town_mdds",v)
+m:("district_mdds_name","sub_district_mdds_name","name_of_mdds_village_town")
+fee:{[x]x:x[-4,-3,-2,-1];x:x[l];x[except m]:.[x[except m];();();0b;`int$()];x:x where not null x}
+fei:{[x]x:x group `village_town_mdds xkey update sum each v from x}
+d:`d!(flip . fee;d),`d!(flip . fei;d)
+d:`d!(flip . rename;d;y;`$"-" vs string y)
+d:reduce[d;`full_join]
+mrMDDS:read0[`;`mrMDDS.xls]
+d:mrMDDS left join `village_town_mdds d
+d
