@@ -1,0 +1,78 @@
+df:("t1";flip `$"t1";flip `$"t1") 0:`2017,5min,.pv.csv
+t1:df`t1
+df:df[;0=`t1]
+phasemaps:`"phasesmaps.csv" 0:`csv
+sensornames:`$string key flip df
+sensornames:flip `Name!(sensornames)
+phasenames:sensornames lj`Name xkey `"phasesmaps.csv"
+phasenames:delete Name from phasenames
+set key[`df]!phasenames`PhaseNum
+df:flip `t1!flip `t1#df
+df:`t1`df!(t1;flip `$"t1") 0:`2017,5min,.pv.csv
+mind:.z.p"2017-02-07 00:00:00 UTC"
+maxd:.z.p"2017-12-30 00:00:00 UTC"
+gts: mind + til(maxd-mind) * 5m
+gts:flip `t1!flip `t1#gts
+df:gts lj `t1 xkey df
+Batchtimemapping:("t1";flip `$"t1") 0:`"Batchtimemapping.xls"
+Batchtimemapping:`t1!(.z.p round[`mins]Batchtimemapping`t1)
+df:df lj `t1 xkey Batchtimemapping
+df:`BatchNumber!na.locf[`fromLast]df`BatchNumber
+batchduration:("BatchNumber";enlist "hours")!(("BatchNumber";enlist count) group df`BatchNumber)
+batchduration:`hours!(batchduration`hours)%60
+df:df lj `BatchNumber xkey batchduration
+qty:("BatchNumber";flip `$"t1") 0:`"qty.xls"
+df:df lj `BatchNumber xkey qty
+df:na.locf df
+specs:("BatchNumber";flip `$"t1") 0:`"allspecs.xls"
+df:df lj `BatchNumber xkey specs
+df:na.locf df
+grabs:("t1";flip `$"t1") 0:`"grabsamples.csv"
+grabs:`t1!(.z.p grabs`t1)
+df:df lj `t1 xkey grabs
+df:na.locf df
+weather:("t1";flip `$"t1") 0:`"weather.csv"
+weather:select from weather where ()>0
+df:df lj `t1 xkey weather
+PO:("t1";flip `$"t1") 0:`"PO.csv"
+PO:`t1!(.z.p PO`t1)
+df:df lj `t1 xkey PO
+df:na.locf[`fromLast] df
+df:`index!(ave df`hours by df`BatchNumber)
+df:delete SC2_LIC55001.pv_Ph_4,SC2_LIC23501.pv_Ph_4,SC2_FIC20461.pv_Ph_2,SC2_FIC20462.pv_Ph_2,SC2_FIC20464.pv_Ph_2,SC2_LIC55022.pv_Ph_8,SC2_TIC20760.pv_Ph_2 from df
+t1:df`t1
+df:select from df where t1 = t1
+df:select from df where not t1
+df:select avg[cols x] by BatchNumber from df
+df:select from df where not `.
+df:`BatchNumber!df`Group.1
+df1:select from df where (cols like "SC2" ) or (cols like "t1") or (cols like "ParamC1")
+yclass:("low";"middle";"high") cut[(0.605;0.626)#:] df1`ParamC1
+train:df1[1 200; (1 39),40]
+test:df1[201 220; (1 39),40]
+model:lm[`ParamC1;train]
+p:predict model
+postResample[p;train`ParamC1]
+p:predict[model;test]
+postResample[p;test`ParamC1]
+data.frame[p;test`ParamC1]
+train:df1[1 200; (1 39),40]
+test:df1[201 220; (1 39),40]
+trregs:train[;(1 2 13 18 4 6 7 log 21)]
+tsregs:test[;(1 2 13 18 4 6 7 log 21)]
+model:auto.arima[train`ParamC1;xreg:trregs]
+p:predict[model;20;newxreg:tsregs]
+postResample[p`pred;test`ParamC1]
+data.frame[p`pred;test`ParamC1]
+df1:`yclass!cut[(0;0.616;0.7);("1";"2")] df1`ParamC1
+table[df1`yclass]
+yclass:df1`yclass
+model:lm[yclass;df[;2 39]]
+p:predict model
+p:?[p<1.5;1;2]
+postResample[p;yclass]
+confusionMatrix[(`as.factor p);(`as.factor yclass)]
+p:predict[model;test[;-40]]
+p:?[p<1.5;1;2]
+postResample[p;yclass[201 220]]
+confusionMatrix[(`as.factor p);(`as.factor yclass[201 220])]
